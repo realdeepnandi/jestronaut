@@ -1,6 +1,8 @@
 example/
 CLAUDE.md
 docs/
+assets/
+.github/
 .gitignore
 *.log
 .DS_Store
