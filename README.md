@@ -1,0 +1,101 @@
+# Jestronaut 🚀
+
+An interactive terminal dashboard for Jest — navigate live test results, suites, and failure stack traces without leaving your terminal.
+
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Jest](https://img.shields.io/badge/jest-%3E%3D27-orange)
+![Node](https://img.shields.io/badge/node-%3E%3D16-green)
+
+## Features
+
+- Live dashboard updates as tests run
+- Animated spinner showing which suites are in progress
+- Pass / Fail / Skip counters + progress bar
+- Navigable test results panel with keyboard controls
+- Navigable suites panel — open any suite to see its full breakdown
+- Failure detail overlay with expected/received diff and stack trace
+- Navigate between failed tests inside a suite with `j/k`
+
+## Install
+
+```bash
+npm install --save-dev jestronaut
+```
+
+## Setup
+
+Add to your `jest.config.js`:
+
+```js
+module.exports = {
+  reporters: ['jestronaut'],
+};
+```
+
+## Run
+
+Instead of `jest`, use:
+
+```bash
+npx jestronaut
+```
+
+Or add to your `package.json` scripts:
+
+```json
+"scripts": {
+  "test": "jestronaut"
+}
+```
+
+All Jest CLI flags work as normal:
+
+```bash
+npx jestronaut --testPathPattern=auth
+npx jestronaut --watch
+```
+
+## Keyboard Controls
+
+| Key | Action |
+|-----|--------|
+| `Tab` | Switch focus between Test Results and Suites panels |
+| `j` / `↓` | Move cursor down |
+| `k` / `↑` | Move cursor up |
+| `Enter` | Open failure detail (on a failed test) or suite detail (on a suite) |
+| `Esc` | Close overlay / go back |
+| `q` / `Ctrl+C` | Quit |
+
+### Inside Suite Detail
+
+| Key | Action |
+|-----|--------|
+| `j` / `k` | Navigate between failed tests only |
+| `Enter` | Open failure detail for selected test |
+| `Esc` | Back to dashboard |
+
+### Inside Failure Detail
+
+| Key | Action |
+|-----|--------|
+| `j` / `k` | Scroll |
+| `Esc` | Back |
+
+## Example
+
+The `example/` directory contains a sample Jest project with multiple test suites and intentional failures to demonstrate the dashboard.
+
+```bash
+cd example
+npm install
+npm test
+```
+
+## Requirements
+
+- Node >= 16
+- Jest >= 27
+
+## License
+
+MIT

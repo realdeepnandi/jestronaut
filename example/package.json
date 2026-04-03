@@ -1,0 +1,14 @@
+{
+  "name": "jestronaut-example",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "jestronaut"
+  },
+  "devDependencies": {
+    "jest": "^30.0.0"
+  },
+  "dependencies": {
+    "jestronaut": "file:.."
+  }
+}
