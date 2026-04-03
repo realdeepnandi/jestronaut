@@ -1,6 +1,6 @@
 {
   "name": "jestronaut",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "An interactive terminal dashboard UI for Jest — navigate live test results, suites, and failure details without leaving your terminal",
   "main": "index.js",
   "bin": {
