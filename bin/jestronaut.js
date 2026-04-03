@@ -67,7 +67,6 @@ if (realSetRawMode) {
   };
 }
 
-
 // Intercept stdin data events: when TUI is active, only dispatch to blessed's
 // listeners — skip Jest's watch mode listener so it doesn't trigger a re-run.
 const realEmit = process.stdin.emit.bind(process.stdin);
@@ -79,6 +78,11 @@ process.stdin.emit = (event, ...args) => {
   }
   return realEmit(event, ...args);
 };
+
+// Global contract for watch mode:
+//   __jestronaut_ui__            — { screen, widgets, startTicker, state } created once, reused across re-runs
+//   __jestronaut_blessed_listeners__ — Set of stdin 'data' listeners registered by blessed (set in reporter constructor)
+//   __jestronaut_block_jest_input__  — boolean; true when TUI should handle all input exclusively (set in renderAll)
 
 // Forward all CLI args so flags like --testPathPattern, --watch etc. still work
 const { run } = require('jest');
