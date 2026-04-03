@@ -6,6 +6,17 @@ An interactive terminal dashboard for Jest — navigate live test results, suite
 ![Jest](https://img.shields.io/badge/jest-%3E%3D27-orange)
 ![Node](https://img.shields.io/badge/node-%3E%3D16-green)
 
+## Screenshots
+
+### Main Dashboard
+![Main Dashboard](assets/dashboard.png)
+
+### Suite Detail
+![Suite Detail](assets/suite-detail.png)
+
+### Failure Detail
+![Failure Detail](assets/failure-detail.png)
+
 ## Features
 
 - Live dashboard updates as tests run
