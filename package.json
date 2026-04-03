@@ -25,5 +25,13 @@
   "peerDependencies": {
     "jest": ">=27"
   },
-  "author": "Deep Nandi"
+  "author": "Deep Nandi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/realdeepnandi/jestronaut.git"
+  },
+  "homepage": "https://github.com/realdeepnandi/jestronaut#readme",
+  "bugs": {
+    "url": "https://github.com/realdeepnandi/jestronaut/issues"
+  }
 }
