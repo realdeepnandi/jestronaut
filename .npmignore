@@ -1,0 +1,5 @@
+example/
+CLAUDE.md
+.gitignore
+*.log
+.DS_Store

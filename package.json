@@ -6,7 +6,15 @@
   "bin": {
     "jestronaut": "./bin/jestronaut.js"
   },
-  "keywords": ["jest", "reporter", "dashboard", "tui", "terminal", "blessed", "jestronaut"],
+  "keywords": [
+    "jest",
+    "reporter",
+    "dashboard",
+    "tui",
+    "terminal",
+    "blessed",
+    "jestronaut"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=16"
@@ -16,5 +24,6 @@
   },
   "peerDependencies": {
     "jest": ">=27"
-  }
+  },
+  "author": "Deep Nandi"
 }
