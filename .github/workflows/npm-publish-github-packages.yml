@@ -91,7 +91,7 @@ jobs:
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
           PKG_NAME=$(node -p "require('./package.json').name")
-          if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null; then
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version --registry https://registry.npmjs.org/ 2>/dev/null; then
             echo "already_published=true" >> $GITHUB_OUTPUT
           else
             echo "already_published=false" >> $GITHUB_OUTPUT
