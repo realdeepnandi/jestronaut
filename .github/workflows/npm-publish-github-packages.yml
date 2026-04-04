@@ -1,7 +1,6 @@
-# Publishes to GitHub Packages when a version bump is pushed to main.
-# Triggered only when package.json changes on the main branch — the publish
-# step then checks whether the version in package.json already exists in the
-# registry and skips if so (idempotent, safe to re-run).
+# Publishes to GitHub Packages and npmjs.org when a version bump is pushed to main.
+# Triggered only when package.json changes on the main branch — both publish
+# steps check whether the version already exists and skip if so (idempotent).
 
 name: Node.js Package
 
@@ -13,7 +12,28 @@ on:
       - package.json
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install test dependencies
+        run: npm ci
+        working-directory: tests
+
+      - name: Run tests
+        run: npm test
+        working-directory: tests
+
   publish-gpr:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,14 +49,6 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Install test dependencies
-        run: npm ci
-        working-directory: tests
-
-      - name: Run tests
-        run: npm test
-        working-directory: tests
-
       - name: Check if version already published
         id: version_check
         run: |
@@ -50,8 +62,40 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish
+      - name: Publish to GitHub Packages
         if: steps.version_check.outputs.already_published == 'false'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-npm:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org/
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Check if version already published
+        id: version_check
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          PKG_NAME=$(node -p "require('./package.json').name")
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+          else
+            echo "already_published=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to npm
+        if: steps.version_check.outputs.already_published == 'false'
+        run: npm publish --access public --provenance
