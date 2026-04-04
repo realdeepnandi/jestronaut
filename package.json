@@ -1,7 +1,8 @@
 {
   "name": "jestronaut",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "An interactive terminal dashboard UI for Jest — navigate live test results, suites, and failure details without leaving your terminal",
+  "type": "module",
   "main": "index.js",
   "bin": {
     "jestronaut": "./bin/jestronaut.js"
@@ -17,10 +18,11 @@
   ],
   "license": "MIT",
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "dependencies": {
-    "blessed": "^0.1.81"
+    "ink": "^5.2.1",
+    "react": "^18.3.1"
   },
   "peerDependencies": {
     "jest": ">=27"

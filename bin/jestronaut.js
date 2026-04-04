@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-'use strict';
 
 // Intercept stdout/stderr before Jest loads anything so its early
 // output ("Determining test suites...") doesn't bleed into the TUI.
@@ -47,43 +46,38 @@ process.stderr.write = (chunk, enc, cb) => {
 // Clear terminal before handing off to Jest
 realStdout('\x1b[2J\x1b[H');
 
-// Block Jest's watch mode from stealing raw TTY control from blessed.
-// Blessed will call setRawMode itself when the screen is created in the reporter.
-// We block ALL subsequent calls after that so Jest can't interfere.
+// Block Jest's watch mode from turning off raw mode while the TUI is active.
+// ink manages raw mode itself — we only prevent Jest from disabling it mid-run.
 const realSetRawMode = process.stdin.setRawMode && process.stdin.setRawMode.bind(process.stdin);
 if (realSetRawMode) {
-  let rawModeSet = false;
   process.stdin.setRawMode = (val) => {
-    if (!rawModeSet && val) {
-      rawModeSet = true;
-      return realSetRawMode(val);
+    // Allow enabling raw mode always (ink may call this multiple times).
+    // Block disabling raw mode when the TUI is holding input focus.
+    if (!val && global.__jestronaut_block_jest_input__) {
+      return process.stdin;
     }
-    if (!val) {
-      // allow turning off (e.g. on exit)
-      rawModeSet = false;
-      return realSetRawMode(val);
-    }
-    return process.stdin;
+    return realSetRawMode(val);
   };
 }
 
-// Intercept stdin data events: when TUI is active, only dispatch to blessed's
-// listeners — skip Jest's watch mode listener so it doesn't trigger a re-run.
+// Gate Jest's stdin keypresses using EventEmitter.prototype.emit patch.
+// This is more reliable than patching stdin.on because Node's stream internals
+// may bypass a patched .on() after setEncoding() is called.
 const realEmit = process.stdin.emit.bind(process.stdin);
-process.stdin.emit = (event, ...args) => {
-  if (event === 'data' && global.__jestronaut_block_jest_input__ && global.__jestronaut_blessed_listeners__) {
-    // Call only blessed's listeners, skip Jest's
-    global.__jestronaut_blessed_listeners__.forEach(l => l(...args));
-    return true;
-  }
-  return realEmit(event, ...args);
+global.__jestronaut_emit__ = realEmit;
+
+const _origEmit = process.stdin.emit;
+process.stdin.emit = function(event, ...args) {
+  if (event === 'data' && global.__jestronaut_block_jest_input__) return true;
+  return _origEmit.apply(this, [event, ...args]);
 };
 
 // Global contract for watch mode:
-//   __jestronaut_ui__            — { screen, widgets, startTicker, state } created once, reused across re-runs
-//   __jestronaut_blessed_listeners__ — Set of stdin 'data' listeners registered by blessed (set in reporter constructor)
-//   __jestronaut_block_jest_input__  — boolean; true when TUI should handle all input exclusively (set in renderAll)
+//   __jestronaut_ui__                    — { store, unmount } created once, reused across re-runs
+//   __jestronaut_block_jest_input__      — boolean; true when TUI holds input focus
+//   __jestronaut_jest_keypress__         — Jest's raw onKeypress listener (unwrapped)
+//   __jestronaut_emit__                  — original process.stdin.emit before any patching
 
 // Forward all CLI args so flags like --testPathPattern, --watch etc. still work
-const { run } = require('jest');
+const { run } = await import('jest');
 run();
