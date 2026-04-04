@@ -2,6 +2,7 @@
 
 An interactive terminal dashboard for Jest — navigate live test results, suites, and failure stack traces without leaving your terminal.
 
+[![npm](https://img.shields.io/npm/v/jestronaut)](https://www.npmjs.com/package/jestronaut)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Jest](https://img.shields.io/badge/jest-%3E%3D27-orange)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-green)
