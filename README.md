@@ -11,6 +11,9 @@ An interactive terminal dashboard for Jest — navigate live test results, suite
 ### Main Dashboard
 ![Main Dashboard](assets/dashboard.png)
 
+### Watch Mode
+![Watch Mode](assets/watch-mode.png)
+
 ### Suite Detail
 ![Suite Detail](assets/suite-detail.png)
 
