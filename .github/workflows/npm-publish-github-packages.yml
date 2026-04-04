@@ -99,4 +99,4 @@ jobs:
 
       - name: Publish to npm
         if: steps.version_check.outputs.already_published == 'false'
-        run: npm publish --access public --provenance
+        run: npm publish --access public
