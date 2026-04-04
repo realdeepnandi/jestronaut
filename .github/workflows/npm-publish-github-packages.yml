@@ -97,6 +97,12 @@ jobs:
             echo "already_published=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Debug npm auth
+        run: |
+          npm whoami || echo "not logged in"
+          npm config get registry
+          node -p "process.env.NODE_AUTH_TOKEN ? 'token present' : 'NO TOKEN'"
+
       - name: Publish to npm
         if: steps.version_check.outputs.already_published == 'false'
         run: npm publish --access public --provenance
