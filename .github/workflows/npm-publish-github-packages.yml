@@ -53,8 +53,7 @@ jobs:
         id: version_check
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
-          PKG_NAME=$(node -p "require('./package.json').name")
-          if npm view "${PKG_NAME}@${PKG_VERSION}" version --registry https://npm.pkg.github.com/ 2>/dev/null; then
+          if npm view "@realdeepnandi/jestronaut@${PKG_VERSION}" version --registry https://npm.pkg.github.com/ 2>/dev/null; then
             echo "already_published=true" >> $GITHUB_OUTPUT
           else
             echo "already_published=false" >> $GITHUB_OUTPUT
@@ -64,7 +63,9 @@ jobs:
 
       - name: Publish to GitHub Packages
         if: steps.version_check.outputs.already_published == 'false'
-        run: npm publish
+        run: |
+          npm pkg set name="@realdeepnandi/jestronaut"
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
