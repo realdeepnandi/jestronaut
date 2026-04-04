@@ -95,6 +95,18 @@ describe('buildSuiteDetailLines', () => {
     expect(rateLine).toContain('75%');
   });
 
+  it('renders skipped tests with SKIP label and no failureObj', () => {
+    const suite = makeSuite({
+      done: true, passed: 0, failed: 0,
+      tests: [{ title: 'pending test', status: 'skipped', duration: null, messages: [] }],
+    });
+    const { lines, meta } = buildSuiteDetailLines(suite, PATH);
+    const testLine = lines.find(l => l.includes('pending test'));
+    expect(testLine).toContain('SKIP');
+    const testMeta = meta.filter(m => m.type === 'test');
+    expect(testMeta[0].failureObj).toBeNull();
+  });
+
   it('returns "(no results yet)" when tests array is empty', () => {
     const { lines } = buildSuiteDetailLines(makeSuite(), PATH);
     expect(lines.some(l => l.includes('no results yet'))).toBe(true);

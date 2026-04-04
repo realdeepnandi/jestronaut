@@ -55,10 +55,10 @@ describe('updateStats', () => {
     const widget = makeWidget();
     updateStats(widget, makeStats({ passed: 5, failed: 2, skipped: 1, total: 8 }));
     const content = widget.setContent.mock.calls[0][0];
-    expect(content).toContain('5');
-    expect(content).toContain('2');
-    expect(content).toContain('1');
-    expect(content).toContain('8');
+    expect(content).toContain('PASSED: 5');
+    expect(content).toContain('FAILED: 2');
+    expect(content).toContain('SKIPPED: 1');
+    expect(content).toContain('TOTAL: 8');
   });
 });
 

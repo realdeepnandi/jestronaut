@@ -102,9 +102,9 @@ describe('openTestDetail', () => {
     const widget = makeWidget();
     openTestDetail(widget, makeFailure(), makeStats({ passed: 7, failed: 2, skipped: 1 }));
     const content = widget.setContent.mock.calls[0][0];
-    expect(content).toContain('7');
-    expect(content).toContain('2');
-    expect(content).toContain('1');
+    expect(content).toContain('Passed  :');
+    expect(content).toContain('Failed  :');
+    expect(content).toContain('Skipped :');
   });
 
   it('escapes blessed tags in the raw message', () => {

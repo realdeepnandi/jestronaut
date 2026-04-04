@@ -9,7 +9,12 @@ function makeGlobalConfig(overrides = {}) {
 }
 
 function makeReporter(configOverrides = {}) {
-  // Clear global UI state between tests
+  // Stop any live ticker from a previous test before clearing globals
+  const prev = global.__jestronaut_ui__;
+  if (prev?.state?._ticker) {
+    clearInterval(prev.state._ticker);
+    prev.state._ticker = null;
+  }
   delete global.__jestronaut_ui__;
   delete global.__jestronaut_blessed_listeners__;
   delete global.__jestronaut_block_jest_input__;
@@ -32,6 +37,8 @@ function makeTestCaseResult(overrides = {}) {
     ...overrides,
   };
 }
+
+beforeEach(() => jest.clearAllMocks());
 
 afterEach(() => {
   const ui = global.__jestronaut_ui__;
@@ -74,6 +81,31 @@ describe('onTestFileStart', () => {
     expect(reporter._state.suites[test.path]).toBeDefined();
     expect(reporter._state.suiteOrder).toContain(test.path);
     expect(reporter._state.suites[test.path].done).toBe(false);
+  });
+});
+
+// ─── onTestCaseStart ─────────────────────────────────────────────────────────
+
+describe('onTestCaseStart', () => {
+  it('adds the test name to suite.running', () => {
+    const reporter = makeReporter();
+    const test = makeTest();
+    reporter.onTestFileStart(test);
+
+    reporter.onTestCaseStart(test, { fullName: 'Suite > my test', title: 'my test' });
+
+    expect(reporter._state.suites[test.path].running.has('Suite > my test')).toBe(true);
+  });
+
+  it('removes the name from running when the test case result arrives', () => {
+    const reporter = makeReporter();
+    const test = makeTest();
+    reporter.onTestFileStart(test);
+    reporter.onTestCaseStart(test, { fullName: 'Suite > my test', title: 'my test' });
+
+    reporter.onTestCaseResult(test, makeTestCaseResult({ fullName: 'Suite > my test', title: 'my test' }));
+
+    expect(reporter._state.suites[test.path].running.has('Suite > my test')).toBe(false);
   });
 });
 
