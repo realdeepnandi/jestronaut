@@ -1,6 +1,4 @@
-'use strict';
-
-const { createState, resetState } = require('jestronaut/lib/state');
+import { createState, resetState } from 'jestronaut/lib/state.js';
 
 describe('createState', () => {
   it('returns a fresh state with correct defaults', () => {
@@ -9,7 +7,7 @@ describe('createState', () => {
     expect(state.stats.failed).toBe(0);
     expect(state.stats.skipped).toBe(0);
     expect(state.stats.total).toBe(0);
-    expect(state.resultLines).toEqual([]);
+    expect(state.resultItems).toEqual([]);
     expect(state.resultMeta).toEqual([]);
     expect(state.failures).toEqual([]);
     expect(state.focus).toBe('results');
@@ -35,7 +33,7 @@ describe('resetState', () => {
     const state = createState();
     state.stats.passed = 5;
     state.stats.failed = 2;
-    state.resultLines = ['line1'];
+    state.resultItems = [{ icon: 'PASS' }];
     state.resultMeta = [{ status: 'passed', failureIndex: -1 }];
     state.failures = [{ title: 'x' }];
     state.suiteDetailOpen = true;
@@ -46,7 +44,7 @@ describe('resetState', () => {
 
     expect(state.stats.passed).toBe(0);
     expect(state.stats.failed).toBe(0);
-    expect(state.resultLines).toEqual([]);
+    expect(state.resultItems).toEqual([]);
     expect(state.resultMeta).toEqual([]);
     expect(state.failures).toEqual([]);
     expect(state.suiteDetailOpen).toBe(false);

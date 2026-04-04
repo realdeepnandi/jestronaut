@@ -1,3 +1,1 @@
-'use strict';
-
-module.exports = require('./lib/reporter');
+export { default } from './lib/reporter.js';

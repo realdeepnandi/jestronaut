@@ -1,24 +1,35 @@
-'use strict';
+import { jest } from '@jest/globals';
+import { createState, resetState } from 'jestronaut/lib/state.js';
 
-// blessed is auto-mocked via moduleNameMapper — no terminal I/O occurs.
+// Mock createApp so the reporter doesn't try to render an ink TUI in tests
+const mockStore = {
+  state: createState(),
+  notify: jest.fn(),
+  reset: jest.fn(function() { resetState(this.state); this.notify(); }),
+  on: jest.fn(),
+  off: jest.fn(),
+};
 
-const DashboardReporter = require('jestronaut/lib/reporter');
+jest.unstable_mockModule('jestronaut/lib/ui/app.js', () => ({
+  createApp: () => ({ store: mockStore, unmount: jest.fn() }),
+}));
+
+jest.unstable_mockModule('jestronaut/lib/ui/components/SuiteDetailOverlay.js', () => ({
+  buildSuiteDetailItems: jest.fn(() => ({ items: [], name: 'test', hasFailed: false, label: '' })),
+  moveCursor: jest.fn(),
+  SuiteDetailOverlay: jest.fn(),
+}));
+
+const { default: DashboardReporter } = await import('jestronaut/lib/reporter.js');
 
 function makeGlobalConfig(overrides = {}) {
   return { watch: false, watchAll: false, ...overrides };
 }
 
 function makeReporter(configOverrides = {}) {
-  // Stop any live ticker from a previous test before clearing globals
-  const prev = global.__jestronaut_ui__;
-  if (prev?.state?._ticker) {
-    clearInterval(prev.state._ticker);
-    prev.state._ticker = null;
-  }
   delete global.__jestronaut_ui__;
-  delete global.__jestronaut_blessed_listeners__;
-  delete global.__jestronaut_block_jest_input__;
-
+  mockStore.state = createState();
+  mockStore.notify.mockClear();
   return new DashboardReporter(makeGlobalConfig(configOverrides));
 }
 
@@ -38,32 +49,18 @@ function makeTestCaseResult(overrides = {}) {
   };
 }
 
-beforeEach(() => jest.clearAllMocks());
-
-afterEach(() => {
-  const ui = global.__jestronaut_ui__;
-  if (ui && ui.state && ui.state._ticker) {
-    clearInterval(ui.state._ticker);
-    ui.state._ticker = null;
-  }
-  delete global.__jestronaut_ui__;
-  delete global.__jestronaut_blessed_listeners__;
-  delete global.__jestronaut_block_jest_input__;
-});
-
 // ─── onRunStart ───────────────────────────────────────────────────────────────
 
 describe('onRunStart', () => {
   it('resets state and records suite count', () => {
     const reporter = makeReporter();
-    // pre-dirty the state
     reporter._state.stats.passed = 99;
-    reporter._state.resultLines = ['stale'];
+    reporter._state.resultItems = [{ icon: 'PASS' }];
 
     reporter.onRunStart({ numTotalTestSuites: 3 });
 
     expect(reporter._state.stats.passed).toBe(0);
-    expect(reporter._state.resultLines).toEqual([]);
+    expect(reporter._state.resultItems).toEqual([]);
     expect(reporter._state.stats.suites).toBe(3);
     expect(reporter._state.watchWaiting).toBe(false);
   });
@@ -112,7 +109,7 @@ describe('onTestCaseStart', () => {
 // ─── onTestCaseResult — passed ───────────────────────────────────────────────
 
 describe('onTestCaseResult (passed)', () => {
-  it('increments passed count and pushes a result line', () => {
+  it('increments passed count and pushes a result item', () => {
     const reporter = makeReporter();
     const test = makeTest();
     reporter.onTestFileStart(test);
@@ -122,8 +119,8 @@ describe('onTestCaseResult (passed)', () => {
     const s = reporter._state;
     expect(s.stats.passed).toBe(1);
     expect(s.stats.total).toBe(1);
-    expect(s.resultLines).toHaveLength(1);
-    expect(s.resultLines[0]).toContain('PASS');
+    expect(s.resultItems).toHaveLength(1);
+    expect(s.resultItems[0].icon).toBe('PASS');
     expect(s.resultMeta[0]).toEqual({ status: 'passed', failureIndex: -1 });
   });
 });
@@ -131,7 +128,7 @@ describe('onTestCaseResult (passed)', () => {
 // ─── onTestCaseResult — failed ───────────────────────────────────────────────
 
 describe('onTestCaseResult (failed)', () => {
-  it('increments failed count, stores failure object, and hints Enter', () => {
+  it('increments failed count, stores failure object, marks isFailed', () => {
     const reporter = makeReporter();
     const test = makeTest();
     reporter.onTestFileStart(test);
@@ -149,7 +146,7 @@ describe('onTestCaseResult (failed)', () => {
     expect(s.failures[0].title).toBe('blows up');
     expect(s.failures[0].messages).toEqual(['Expected 1 to equal 2']);
     expect(s.resultMeta[0]).toEqual({ status: 'failed', failureIndex: 0 });
-    expect(s.resultLines[0]).toContain('[Enter]');
+    expect(s.resultItems[0].isFailed).toBe(true);
   });
 
   it('assigns sequential failureIndex for multiple failures', () => {
@@ -201,13 +198,11 @@ describe('onTestFileResult', () => {
 // ─── onRunComplete ───────────────────────────────────────────────────────────
 
 describe('onRunComplete', () => {
-  it('clears the ticker', () => {
+  it('sets runComplete and runOk', () => {
     const reporter = makeReporter();
-    reporter._state._ticker = setInterval(() => {}, 9999);
-
     reporter.onRunComplete({}, { numFailedTests: 0 });
-
-    expect(reporter._state._ticker).toBeNull();
+    expect(reporter._state.runComplete).toBe(true);
+    expect(reporter._state.runOk).toBe(true);
   });
 
   it('sets watchWaiting when in watch mode', () => {

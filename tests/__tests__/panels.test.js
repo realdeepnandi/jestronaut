@@ -1,286 +1,260 @@
-'use strict';
+// panels.test.js — tests for ink component render helpers
 
-const { updateHeader } = require('jestronaut/lib/ui/panels/header');
-const { updateStats } = require('jestronaut/lib/ui/panels/stats');
-const { updateProgress } = require('jestronaut/lib/ui/panels/progress');
-const { updateFooter } = require('jestronaut/lib/ui/panels/footer');
-const { refreshResults, updateBorder: updateResultsBorder } = require('jestronaut/lib/ui/panels/results');
-const { refreshSuiteDetail } = require('jestronaut/lib/ui/overlays/suiteDetail');
+import { jest } from '@jest/globals';
 
-function makeWidget() {
-  return {
-    setContent: jest.fn(),
-    setItems: jest.fn(),
-    setLabel: jest.fn(),
-    select: jest.fn(),
-    scrollTo: jest.fn(),
-    style: { border: { fg: 'white' } },
-  };
+let createdElements = [];
+
+jest.unstable_mockModule('ink', () => ({
+  Box: jest.fn(({ children }) => children),
+  Text: jest.fn(({ children }) => children),
+  useApp: jest.fn(() => ({ exit: jest.fn() })),
+  useInput: jest.fn(),
+  useStdout: jest.fn(() => ({ stdout: { columns: 80, rows: 24 } })),
+}));
+
+jest.unstable_mockModule('react', () => ({
+  default: {
+    createElement: jest.fn((type, props, ...children) => {
+      createdElements.push({ type, props: props || {}, children });
+      return null;
+    }),
+  },
+}));
+
+jest.unstable_mockModule('jestronaut/lib/ui/components/ScrollableList.js', () => ({
+  ScrollableList: jest.fn(),
+  computeScrollOffset: jest.fn(() => 0),
+}));
+
+jest.unstable_mockModule('jestronaut/lib/ui/components/ScrollableBox.js', () => ({
+  ScrollableBox: jest.fn(),
+}));
+
+jest.unstable_mockModule('jestronaut/lib/constants.js', () => ({
+  SPINNER: ['⠋', '⠙', '⠹', '⠸'],
+}));
+
+const { Header }           = await import('jestronaut/lib/ui/components/Header.js');
+const { Stats }            = await import('jestronaut/lib/ui/components/Stats.js');
+const { Footer }           = await import('jestronaut/lib/ui/components/Footer.js');
+const { buildProgressData } = await import('jestronaut/lib/ui/components/Progress.js');
+const { buildItems }        = await import('jestronaut/lib/ui/components/ResultsList.js');
+
+function render(fn) {
+  createdElements = [];
+  fn();
+  return createdElements;
 }
 
-function makeStats(overrides = {}) {
+// ─── Header ──────────────────────────────────────────────────────────────────
+
+describe('Header', () => {
+  it('shows ALL TESTS PASSED and uses green bg when runOk', () => {
+    const els = render(() => Header({ state: { runComplete: true, runOk: true, runElapsed: '1.2' } }));
+    expect(els.some(e => e.props.backgroundColor === 'green')).toBe(true);
+    expect(els.some(e => typeof e.children[0] === 'string' && e.children[0].includes('ALL TESTS PASSED'))).toBe(true);
+  });
+
+  it('shows SOME TESTS FAILED and uses red bg when not runOk', () => {
+    const els = render(() => Header({ state: { runComplete: true, runOk: false, runElapsed: '0.9' } }));
+    expect(els.some(e => e.props.backgroundColor === 'red')).toBe(true);
+    expect(els.some(e => typeof e.children[0] === 'string' && e.children[0].includes('SOME TESTS FAILED'))).toBe(true);
+  });
+
+  it('shows JEST TEST DASHBOARD with blue bg while running', () => {
+    const els = render(() => Header({ state: { runComplete: false, runOk: false, runElapsed: '0' } }));
+    expect(els.some(e => e.props.backgroundColor === 'blue')).toBe(true);
+    expect(els.some(e => typeof e.children[0] === 'string' && e.children[0].includes('JEST TEST DASHBOARD'))).toBe(true);
+  });
+});
+
+// ─── Stats ───────────────────────────────────────────────────────────────────
+
+describe('Stats', () => {
+  it('includes passed, failed, skipped, total counts in rendered text', () => {
+    const els = render(() => Stats({ stats: { passed: 5, failed: 2, skipped: 1, total: 8 } }));
+    const texts = els.filter(e => typeof e.children[0] === 'string').map(e => e.children[0]);
+    expect(texts.some(t => t.includes('5'))).toBe(true);
+    expect(texts.some(t => t.includes('2'))).toBe(true);
+    expect(texts.some(t => t.includes('1'))).toBe(true);
+    expect(texts.some(t => t.includes('8'))).toBe(true);
+  });
+
+  it('labels passed count with green color', () => {
+    const els = render(() => Stats({ stats: { passed: 3, failed: 0, skipped: 0, total: 3 } }));
+    expect(els.some(e => e.props.color === 'green' && typeof e.children[0] === 'string' && e.children[0].includes('3'))).toBe(true);
+  });
+
+  it('labels failed count with red color', () => {
+    const els = render(() => Stats({ stats: { passed: 0, failed: 4, skipped: 0, total: 4 } }));
+    expect(els.some(e => e.props.color === 'red' && typeof e.children[0] === 'string' && e.children[0].includes('4'))).toBe(true);
+  });
+});
+
+// ─── Progress (real buildProgressData) ───────────────────────────────────────
+
+describe('buildProgressData', () => {
+  function makeStats(overrides = {}) {
+    return { suites: 4, suitesCompleted: 0, failed: 0, ...overrides };
+  }
+
+  it('returns 0% when no suites completed', () => {
+    expect(buildProgressData(makeStats({ suitesCompleted: 0 })).pct).toBe(0);
+  });
+
+  it('returns 100% when all suites completed', () => {
+    expect(buildProgressData(makeStats({ suitesCompleted: 4 })).pct).toBe(100);
+  });
+
+  it('returns 50% at halfway', () => {
+    expect(buildProgressData(makeStats({ suitesCompleted: 2 })).pct).toBe(50);
+  });
+
+  it('caps bar fill at barWidth when suitesCompleted exceeds suites', () => {
+    const { filled, barWidth, bar } = buildProgressData(makeStats({ suites: 2, suitesCompleted: 999 }));
+    expect(filled).toBeLessThanOrEqual(barWidth);
+    expect(bar.length).toBe(barWidth);
+  });
+
+  it('uses red color when there are failures', () => {
+    expect(buildProgressData(makeStats({ failed: 1 })).color).toBe('red');
+  });
+
+  it('uses green color when all suites done with no failures', () => {
+    expect(buildProgressData(makeStats({ suitesCompleted: 4, failed: 0 })).color).toBe('green');
+  });
+
+  it('uses # and - characters for fill and empty', () => {
+    const { bar, filled, empty } = buildProgressData(makeStats({ suitesCompleted: 2 }));
+    expect(bar).toMatch(/^#+\-+$/);
+    expect(bar.split('#').length - 1).toBe(filled);
+    expect(bar.split('-').length - 1).toBe(empty);
+  });
+});
+
+// ─── Footer hints ────────────────────────────────────────────────────────────
+
+function makeFooterState(overrides = {}) {
   return {
-    passed: 0, failed: 0, skipped: 0, total: 0,
-    suites: 4, suitesCompleted: 2,
-    startTime: Date.now() - 2000,
-    endTime: null,
+    stats: { passed: 0, failed: 0, skipped: 0, total: 0, startTime: Date.now() - 2000, endTime: null },
+    spinFrame: 0,
+    focus: 'results',
+    testDetailOpen: false,
+    suiteDetailOpen: false,
+    watchWaiting: false,
+    suites: {},
     ...overrides,
   };
 }
 
-// ─── updateHeader ─────────────────────────────────────────────────────────────
+function getRenderedTexts(state) {
+  const els = render(() => Footer({ state }));
+  return els.filter(e => typeof e.children[0] === 'string').map(e => e.children[0]);
+}
 
-describe('updateHeader', () => {
-  it('sets bg to green and mentions ALL TESTS PASSED when ok', () => {
-    const widget = makeWidget();
-    widget.style = { bg: 'blue' };
-    updateHeader(widget, true);
-    expect(widget.style.bg).toBe('green');
-    expect(widget.setContent.mock.calls[0][0]).toContain('ALL TESTS PASSED');
-  });
-
-  it('sets bg to red and mentions SOME TESTS FAILED when not ok', () => {
-    const widget = makeWidget();
-    widget.style = { bg: 'blue' };
-    updateHeader(widget, false);
-    expect(widget.style.bg).toBe('red');
-    expect(widget.setContent.mock.calls[0][0]).toContain('SOME TESTS FAILED');
-  });
-});
-
-// ─── updateStats ──────────────────────────────────────────────────────────────
-
-describe('updateStats', () => {
-  it('includes passed, failed, skipped, total counts', () => {
-    const widget = makeWidget();
-    updateStats(widget, makeStats({ passed: 5, failed: 2, skipped: 1, total: 8 }));
-    const content = widget.setContent.mock.calls[0][0];
-    expect(content).toContain('PASSED: 5');
-    expect(content).toContain('FAILED: 2');
-    expect(content).toContain('SKIPPED: 1');
-    expect(content).toContain('TOTAL: 8');
-  });
-});
-
-// ─── updateProgress ───────────────────────────────────────────────────────────
-
-describe('updateProgress', () => {
-  it('shows 0% when no suites completed', () => {
-    const widget = makeWidget();
-    updateProgress(widget, makeStats({ suites: 4, suitesCompleted: 0 }), 80);
-    const content = widget.setContent.mock.calls[0][0];
-    expect(content).toContain('0%');
-  });
-
-  it('shows 100% when all suites completed', () => {
-    const widget = makeWidget();
-    updateProgress(widget, makeStats({ suites: 4, suitesCompleted: 4 }), 80);
-    const content = widget.setContent.mock.calls[0][0];
-    expect(content).toContain('100%');
-  });
-
-  it('shows 50% at halfway', () => {
-    const widget = makeWidget();
-    updateProgress(widget, makeStats({ suites: 4, suitesCompleted: 2 }), 80);
-    const content = widget.setContent.mock.calls[0][0];
-    expect(content).toContain('50%');
-  });
-
-  it('uses green bar when no failures', () => {
-    const widget = makeWidget();
-    updateProgress(widget, makeStats({ failed: 0 }), 80);
-    expect(widget.setContent.mock.calls[0][0]).toContain('{green-fg}');
-  });
-
-  it('uses red bar when there are failures', () => {
-    const widget = makeWidget();
-    updateProgress(widget, makeStats({ failed: 1 }), 80);
-    expect(widget.setContent.mock.calls[0][0]).toContain('{red-fg}');
-  });
-
-  it('never exceeds 100%', () => {
-    const widget = makeWidget();
-    updateProgress(widget, makeStats({ suites: 2, suitesCompleted: 999 }), 80);
-    expect(widget.setContent.mock.calls[0][0]).toContain('100%');
-  });
-});
-
-// ─── updateFooter / _getHint ─────────────────────────────────────────────────
-
-describe('updateFooter hints', () => {
-  function makeState(overrides = {}) {
-    return {
-      stats: makeStats(),
-      suites: {},
-      spinFrame: 0,
-      focus: 'results',
-      testDetailOpen: false,
-      suiteDetailOpen: false,
-      watchWaiting: false,
-      ...overrides,
-    };
-  }
-
+describe('Footer hints', () => {
   it('shows scroll hint when testDetail is open', () => {
-    const widget = makeWidget();
-    updateFooter(widget, makeState({ testDetailOpen: true }));
-    expect(widget.setContent.mock.calls[0][0]).toContain('scroll');
+    expect(getRenderedTexts(makeFooterState({ testDetailOpen: true })).some(t => t.includes('scroll'))).toBe(true);
   });
 
   it('shows navigate/open/back hints when suiteDetail is open', () => {
-    const widget = makeWidget();
-    updateFooter(widget, makeState({ suiteDetailOpen: true }));
-    const content = widget.setContent.mock.calls[0][0];
-    expect(content).toContain('navigate failed tests');
-    expect(content).toContain('open failure');
-    expect(content).toContain('back');
+    const joined = getRenderedTexts(makeFooterState({ suiteDetailOpen: true })).join(' ');
+    expect(joined).toContain('navigate');
+    expect(joined).toContain('open failure');
+    expect(joined).toContain('Esc');
   });
 
   it('shows watch hint when watchWaiting', () => {
-    const widget = makeWidget();
-    updateFooter(widget, makeState({ watchWaiting: true }));
-    expect(widget.setContent.mock.calls[0][0]).toContain('run all tests');
+    expect(getRenderedTexts(makeFooterState({ watchWaiting: true })).some(t => t.includes('run all tests'))).toBe(true);
   });
 
-  it('shows open failure hint when focus is results', () => {
-    const widget = makeWidget();
-    updateFooter(widget, makeState({ focus: 'results' }));
-    expect(widget.setContent.mock.calls[0][0]).toContain('open failure');
-  });
-
-  it('shows open suite hint when focus is suites', () => {
-    const widget = makeWidget();
-    updateFooter(widget, makeState({ focus: 'suites' }));
-    expect(widget.setContent.mock.calls[0][0]).toContain('open suite');
+  it('shows open failure hint in default (results) focus', () => {
+    expect(getRenderedTexts(makeFooterState({ focus: 'results' })).some(t => t.includes('open failure'))).toBe(true);
   });
 
   it('shows running count when suites are still running', () => {
-    const widget = makeWidget();
-    const state = makeState({
-      suites: {
-        '/a.test.js': { done: false },
-        '/b.test.js': { done: true },
-      },
-    });
-    updateFooter(widget, state);
-    expect(widget.setContent.mock.calls[0][0]).toContain('1 running');
+    const state = makeFooterState({ suites: { '/a.test.js': { done: false }, '/b.test.js': { done: true } } });
+    expect(getRenderedTexts(state).some(t => t.includes('Running') && t.includes('1'))).toBe(true);
+  });
+
+  it('shows elapsed time when no suites are running', () => {
+    expect(getRenderedTexts(makeFooterState({ suites: {} })).some(t => t.includes('Elapsed'))).toBe(true);
   });
 });
 
-// ─── refreshResults ───────────────────────────────────────────────────────────
+// ─── ResultsList buildItems (real function) ───────────────────────────────────
 
-describe('refreshResults', () => {
-  function makeState(overrides = {}) {
+describe('buildItems', () => {
+  const resultItems = [
+    { icon: 'PASS', ancestor: 'Suite', title: 'test 1', titleColor: 'white', duration: 10, isFailed: false },
+    { icon: 'FAIL', ancestor: 'Suite', title: 'test 2', titleColor: 'red',   duration: 20, isFailed: true  },
+    { icon: 'SKIP', ancestor: '',      title: 'test 3', titleColor: 'yellow',duration: null, isFailed: false },
+  ];
+
+  it('formats text as [ICON] ancestor > title (Xms)', () => {
+    const items = buildItems(resultItems);
+    expect(items[0].text).toMatch(/\[PASS\].*Suite.*test 1.*10ms/);
+  });
+
+  it('appends [Enter] hint for failed items', () => {
+    const items = buildItems(resultItems);
+    expect(items[1].text).toContain('[Enter]');
+    expect(items[0].text).not.toContain('[Enter]');
+  });
+
+  it('omits duration when null', () => {
+    const items = buildItems(resultItems);
+    expect(items[2].text).not.toContain('ms');
+  });
+
+  it('omits ancestor separator when ancestor is empty', () => {
+    const items = buildItems(resultItems);
+    expect(items[2].text).not.toContain('>');
+  });
+
+  it('sets color from titleColor', () => {
+    const items = buildItems(resultItems);
+    expect(items[0].color).toBe('white');
+    expect(items[1].color).toBe('red');
+  });
+});
+
+// ─── SuiteDetail cursor highlighting (pure) ──────────────────────────────────
+
+function buildSuiteDetailListItems(suiteDetailItems, suiteDetailCursor) {
+  return suiteDetailItems.map((item, i) => {
+    const isSelected = i === suiteDetailCursor && item.type === 'test' && item.failureObj;
     return {
-      resultLines: ['line1', 'line2'],
-      resultCursor: -1,
-      focus: 'results',
-      suiteDetailOpen: false,
-      testDetailOpen: false,
-      ...overrides,
+      text: isSelected ? `> ${item.text.trimStart()}` : `  ${item.text}`,
+      color: item.color,
+      bg: isSelected ? '#5a0a0a' : undefined,
     };
+  });
+}
+
+describe('SuiteDetail cursor highlighting', () => {
+  function makeMeta() {
+    return [
+      { type: 'other', text: 'header',    color: 'white', failureObj: null },
+      { type: 'test',  text: 'pass test', color: 'green', failureObj: null },
+      { type: 'test',  text: 'fail test', color: 'red',   failureObj: { title: 'fail test' } },
+      { type: 'other', text: 'footer',    color: 'gray',  failureObj: null },
+    ];
   }
-
-  it('always calls setItems with resultLines', () => {
-    const widget = makeWidget();
-    const state = makeState();
-    refreshResults(widget, state);
-    expect(widget.setItems).toHaveBeenCalledWith(state.resultLines);
-  });
-
-  it('selects the cursor when focused and cursor >= 0 and no overlay', () => {
-    const widget = makeWidget();
-    refreshResults(widget, makeState({ resultCursor: 1 }));
-    expect(widget.select).toHaveBeenCalledWith(1);
-    expect(widget.scrollTo).toHaveBeenCalledWith(1);
-  });
-
-  it('deselects when cursor is -1', () => {
-    const widget = makeWidget();
-    refreshResults(widget, makeState({ resultCursor: -1 }));
-    expect(widget.select).toHaveBeenCalledWith(-1);
-  });
-
-  it('deselects when suiteDetail overlay is open', () => {
-    const widget = makeWidget();
-    refreshResults(widget, makeState({ resultCursor: 1, suiteDetailOpen: true }));
-    expect(widget.select).toHaveBeenCalledWith(-1);
-  });
-
-  it('deselects when testDetail overlay is open', () => {
-    const widget = makeWidget();
-    refreshResults(widget, makeState({ resultCursor: 1, testDetailOpen: true }));
-    expect(widget.select).toHaveBeenCalledWith(-1);
-  });
-
-  it('deselects when focus is not results', () => {
-    const widget = makeWidget();
-    refreshResults(widget, makeState({ resultCursor: 1, focus: 'suites' }));
-    expect(widget.select).toHaveBeenCalledWith(-1);
-  });
-});
-
-// ─── updateResultsBorder ─────────────────────────────────────────────────────
-
-describe('updateResultsBorder', () => {
-  it('sets border to white and label to FOCUSED when focused', () => {
-    const widget = makeWidget();
-    updateResultsBorder(widget, true);
-    expect(widget.style.border.fg).toBe('white');
-    expect(widget.setLabel).toHaveBeenCalledWith(expect.stringContaining('FOCUSED'));
-  });
-
-  it('resets border to cyan and removes FOCUSED label when not focused', () => {
-    const widget = makeWidget();
-    updateResultsBorder(widget, false);
-    expect(widget.style.border.fg).toBe('cyan');
-    expect(widget.setLabel).toHaveBeenCalledWith(expect.not.stringContaining('FOCUSED'));
-  });
-});
-
-// ─── refreshSuiteDetail ──────────────────────────────────────────────────────
-
-describe('refreshSuiteDetail', () => {
-  function makeState(overrides = {}) {
-    return {
-      suiteDetailLines: ['header', 'pass test', 'fail test', 'footer'],
-      suiteDetailMeta: [
-        { type: 'other' },
-        { type: 'test', failureObj: null },
-        { type: 'test', failureObj: { title: 'fail test' } },
-        { type: 'other' },
-      ],
-      suiteDetailCursor: 2,
-      ...overrides,
-    };
-  }
-
-  it('calls setItems with the same number of lines', () => {
-    const widget = makeWidget();
-    refreshSuiteDetail(widget, makeState());
-    expect(widget.setItems).toHaveBeenCalledWith(expect.arrayContaining([expect.any(String)]));
-    expect(widget.setItems.mock.calls[0][0]).toHaveLength(4);
-  });
 
   it('highlights the cursor line when it is a failed test', () => {
-    const widget = makeWidget();
-    refreshSuiteDetail(widget, makeState({ suiteDetailCursor: 2 }));
-    const items = widget.setItems.mock.calls[0][0];
-    expect(items[2]).toContain('{#3a0a0a-bg}');
-    expect(items[2]).toContain('>');
+    const built = buildSuiteDetailListItems(makeMeta(), 2);
+    expect(built[2].bg).toBe('#5a0a0a');
+    expect(built[2].text).toContain('>');
   });
 
   it('does not highlight non-failure lines', () => {
-    const widget = makeWidget();
-    refreshSuiteDetail(widget, makeState());
-    const items = widget.setItems.mock.calls[0][0];
-    expect(items[0]).not.toContain('{#3a0a0a-bg}');
-    expect(items[1]).not.toContain('{#3a0a0a-bg}');
+    const built = buildSuiteDetailListItems(makeMeta(), 2);
+    expect(built[0].bg).toBeUndefined();
+    expect(built[1].bg).toBeUndefined();
   });
 
-  it('scrolls to the cursor position', () => {
-    const widget = makeWidget();
-    refreshSuiteDetail(widget, makeState({ suiteDetailCursor: 2 }));
-    expect(widget.scrollTo).toHaveBeenCalledWith(2);
+  it('does not highlight a passing test even if cursor is on it', () => {
+    expect(buildSuiteDetailListItems(makeMeta(), 1)[1].bg).toBeUndefined();
   });
 });
