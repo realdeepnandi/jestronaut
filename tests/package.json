@@ -1,0 +1,22 @@
+{
+  "name": "jestronaut-tests",
+  "private": true,
+  "description": "Test suite for jestronaut",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^27.0.0"
+  },
+  "dependencies": {
+    "jestronaut": "file:../"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/__tests__/**/*.test.js"],
+    "moduleNameMapper": {
+      "^blessed$": "<rootDir>/__mocks__/blessed.js"
+    },
+    "forceExit": true
+  }
+}
