@@ -4,7 +4,9 @@
 // and let Jest run with its default reporter.
 if (!process.stdout.isTTY) {
   const { run } = await import('jest');
-  run();
+  // Override the reporter config so DashboardReporter is never instantiated
+  process.argv.push('--reporters=default');
+  await run();
   process.exit();
 }
 
