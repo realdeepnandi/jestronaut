@@ -148,7 +148,7 @@ function makeFooterState(overrides = {}) {
 }
 
 function getRenderedTexts(state) {
-  const els = render(() => Footer({ state }));
+  const els = render(() => Footer({ state, width: 80 }));
   return els.filter(e => typeof e.children[0] === 'string').map(e => e.children[0]);
 }
 
@@ -165,11 +165,26 @@ describe('Footer hints', () => {
   });
 
   it('shows watch hint when watchWaiting', () => {
-    expect(getRenderedTexts(makeFooterState({ watchWaiting: true })).some(t => t.includes('run all tests'))).toBe(true);
+    expect(getRenderedTexts(makeFooterState({ watchWaiting: true })).some(t => t.includes('run all'))).toBe(true);
   });
 
-  it('shows open failure hint in default (results) focus', () => {
-    expect(getRenderedTexts(makeFooterState({ focus: 'results' })).some(t => t.includes('open failure'))).toBe(true);
+  it('shows re-run failed hint when watchWaiting and there are failures', () => {
+    const state = makeFooterState({ watchWaiting: true });
+    state.stats.failed = 2;
+    expect(getRenderedTexts(state).some(t => t.includes('re-run failed'))).toBe(true);
+  });
+
+  it('hides re-run failed hint when watchWaiting but no failures', () => {
+    expect(getRenderedTexts(makeFooterState({ watchWaiting: true })).some(t => t.includes('re-run failed'))).toBe(false);
+  });
+
+  it('shows open hint in default (results) focus', () => {
+    expect(getRenderedTexts(makeFooterState({ focus: 'results' })).some(t => t.includes('[Enter] open'))).toBe(true);
+  });
+
+  it('shows help hint in default state', () => {
+    const texts = getRenderedTexts(makeFooterState());
+    expect(texts.some(t => t.includes('?') && t.includes('help'))).toBe(true);
   });
 
   it('shows running count when suites are still running', () => {

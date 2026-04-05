@@ -4,6 +4,10 @@
   "description": "An interactive terminal dashboard UI for Jest — navigate live test results, suites, and failure details without leaving your terminal",
   "type": "module",
   "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./watch-plugin": "./lib/JestronautWatchPlugin.js"
+  },
   "bin": {
     "jestronaut": "./bin/jestronaut.js"
   },
