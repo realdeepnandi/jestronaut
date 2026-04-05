@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+// If stdout is not a TTY (CI, piped output, etc.), skip the TUI entirely
+// and let Jest run with its default reporter.
+if (!process.stdout.isTTY) {
+  const { run } = await import('jest');
+  // Override the reporter config so DashboardReporter is never instantiated
+  process.argv.push('--reporters=default');
+  await run();
+  process.exit();
+}
+
 // Intercept stdout/stderr before Jest loads anything so its early
 // output ("Determining test suites...") doesn't bleed into the TUI.
 const realStdout = process.stdout.write.bind(process.stdout);
