@@ -6,7 +6,8 @@
   "main": "index.js",
   "exports": {
     ".": "./index.js",
-    "./watch-plugin": "./lib/JestronautWatchPlugin.js"
+    "./watch-plugin": "./lib/JestronautWatchPlugin.js",
+    "./lib/*": "./lib/*"
   },
   "bin": {
     "jestronaut": "./bin/jestronaut.js"
