@@ -30,6 +30,9 @@ An interactive terminal dashboard for Jest — navigate live test results, suite
 - Navigable suites panel — open any suite to see its full breakdown
 - Failure detail overlay with expected/received diff and stack trace
 - Navigate between failed tests inside a suite with `j/k`
+- Re-run failed tests with `r` (watch mode)
+- Run all tests with `a` (watch mode)
+- Help overlay with `?` showing all keybindings
 
 ## Install
 
@@ -44,6 +47,7 @@ Add to your `jest.config.js`:
 ```js
 module.exports = {
   reporters: ['jestronaut'],
+  watchPlugins: ['jestronaut/watch-plugin'], // enables watch mode keybindings (r, a)
 };
 ```
 
@@ -79,7 +83,15 @@ npx jestronaut --watch
 | `k` / `↑` | Move cursor up |
 | `Enter` | Open failure detail (on a failed test) or suite detail (on a suite) |
 | `Esc` | Close overlay / go back |
+| `?` | Toggle help overlay |
 | `q` / `Ctrl+C` | Quit |
+
+### Watch Mode
+
+| Key | Action |
+|-----|--------|
+| `r` | Re-run failed tests only |
+| `a` | Run all tests |
 
 ### Inside Suite Detail
 
