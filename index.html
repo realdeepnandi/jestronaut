@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jestronaut — Interactive Jest Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --red: #f85149;
+      --yellow: #d29922;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* NAV */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 10;
+    }
+    .nav-logo {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .nav-logo span { color: var(--accent); }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a { color: var(--muted); font-size: 0.9rem; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* HERO */
+    .hero {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 5rem 2rem 3rem;
+      text-align: center;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(88,166,255,0.1);
+      border: 1px solid rgba(88,166,255,0.3);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: clamp(2.2rem, 6vw, 3.8rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 1.25rem;
+    }
+    h1 .accent { color: var(--accent); }
+    .hero-sub {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+    }
+    .install-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+    .install-box .prompt { color: var(--muted); }
+    .install-box .cmd { color: var(--green); }
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.6rem 1.4rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #0d1117; }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    /* DEMO SCREENSHOT */
+    .demo {
+      max-width: 900px;
+      margin: 3rem auto;
+      padding: 0 2rem;
+    }
+    .demo-window {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    }
+    .demo-titlebar {
+      background: var(--surface);
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #28c840; }
+    .demo-titlebar-label {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .demo-body {
+      padding: 1.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: #cdd9e5;
+    }
+    .demo-placeholder {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .demo-placeholder .icon { font-size: 3rem; margin-bottom: 1rem; }
+    /* TUI mockup rows */
+    .tui-header { color: var(--accent); font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem; }
+    .tui-pass { color: var(--green); }
+    .tui-fail { color: var(--red); }
+    .tui-skip { color: var(--yellow); }
+    .tui-running { color: var(--accent); }
+    .tui-muted { color: var(--muted); }
+    .tui-row { display: flex; gap: 1rem; }
+    .tui-col { flex: 1; }
+
+    /* FEATURES */
+    .features {
+      max-width: 900px;
+      margin: 4rem auto;
+      padding: 0 2rem;
+    }
+    .section-label {
+      text-align: center;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      text-align: center;
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 700;
+      margin-bottom: 3rem;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.25rem;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      transition: border-color 0.2s;
+    }
+    .feature-card:hover { border-color: var(--accent); }
+    .feature-icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
+    .feature-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .feature-card p { font-size: 0.85rem; color: var(--muted); }
+
+    /* QUICK START */
+    .quickstart {
+      max-width: 700px;
+      margin: 4rem auto;
+      padding: 0 2rem;
+    }
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 1.5rem 0;
+    }
+    .code-block-header {
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    .code-block pre {
+      padding: 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      overflow-x: auto;
+    }
+    .kw { color: #ff7b72; }
+    .str { color: #a5d6ff; }
+    .prop { color: #79c0ff; }
+    .cmt { color: var(--muted); }
+    .num { color: #f2cc60; }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <span class="nav-logo">jest<span class="accent">ronaut</span></span>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#quickstart">Quick Start</a>
+      <a href="https://github.com/realdeepnandi/jestronaut" target="_blank">GitHub</a>
+      <a href="https://www.npmjs.com/package/jestronaut" target="_blank">npm</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="badge">v0.3.19 — now on npm</div>
+    <h1>Your Jest tests,<br><span class="accent">beautifully live.</span></h1>
+    <p class="hero-sub">
+      Jestronaut replaces Jest's default output with an interactive terminal dashboard.
+      Navigate results, inspect failures, and watch suites run — all without leaving your terminal.
+    </p>
+    <div class="install-box">
+      <span class="prompt">$</span>
+      <span class="cmd">npm install --save-dev jestronaut</span>
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="#quickstart">Get Started</a>
+      <a class="btn btn-secondary" href="https://github.com/realdeepnandi/jestronaut" target="_blank">View on GitHub</a>
+    </div>
+  </section>
+
+  <!-- DEMO -->
+  <div class="demo">
+    <div class="demo-window">
+      <div class="demo-titlebar">
+        <span class="dot dot-red"></span>
+        <span class="dot dot-yellow"></span>
+        <span class="dot dot-green"></span>
+        <span class="demo-titlebar-label">jestronaut — terminal dashboard</span>
+      </div>
+      <div class="demo-body">
+        <div class="tui-header">⚡ JESTRONAUT &nbsp;·&nbsp; 3 suites &nbsp;·&nbsp; 12 tests</div>
+        <div class="tui-row" style="margin-top:0.5rem">
+          <div class="tui-col">
+            <div class="tui-muted">── Suites ─────────────────</div>
+            <div class="tui-pass">✔  auth.test.js</div>
+            <div class="tui-fail">✖  api.test.js</div>
+            <div class="tui-running">⠸  utils.test.js &nbsp;<span class="tui-muted">(running…)</span></div>
+          </div>
+          <div class="tui-col">
+            <div class="tui-muted">── Results ────────────────</div>
+            <div class="tui-pass">✔  login with valid credentials</div>
+            <div class="tui-pass">✔  logout clears session</div>
+            <div class="tui-fail">✖  POST /users returns 201</div>
+            <div class="tui-skip">○  rate limiter (skipped)</div>
+          </div>
+        </div>
+        <div style="margin-top:1rem; border-top:1px solid #30363d; padding-top:0.75rem;" class="tui-muted">
+          &nbsp;↑↓ navigate &nbsp; Enter open &nbsp; Tab switch panel &nbsp; q quit &nbsp; ? help
+        </div>
+      </div>
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:0.8rem;margin-top:0.75rem;">
+      Replace this mockup with a real screenshot or GIF — drop it in as <code>demo.gif</code> and update the src below.
+    </p>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <p class="section-label">Why Jestronaut</p>
+    <h2 class="section-title">Everything Jest output should be</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Live dashboard</h3>
+        <p>Watch suites complete in real time with animated spinners and instant result updates — no more scrolling a wall of text.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>Keyboard navigation</h3>
+        <p>Arrow keys, Tab, Enter. Browse suites and individual test results without touching the mouse. Full keybinding help with <code>?</code>.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💥</div>
+        <h3>Failure drill-down</h3>
+        <p>Open any failing test to see the full error message and stack trace in a scrollable overlay — right inside the dashboard.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔌</div>
+        <h3>Zero config</h3>
+        <p>One line in <code>jest.config.js</code> and you're done. No plugins, no wrappers, no config files to maintain.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUICK START -->
+  <section class="quickstart" id="quickstart">
+    <p class="section-label">Quick Start</p>
+    <h2 class="section-title">Up in 60 seconds</h2>
+
+    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:0.5rem;">1. Install</p>
+    <div class="code-block">
+      <div class="code-block-header"><span>terminal</span></div>
+      <pre>npm install --save-dev jestronaut</pre>
+    </div>
+
+    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:0.5rem;">2. Add to <code>jest.config.js</code></p>
+    <div class="code-block">
+      <div class="code-block-header"><span>jest.config.js</span></div>
+      <pre><span class="cmt">// jest.config.js</span>
+<span class="kw">module</span>.<span class="prop">exports</span> = {
+  <span class="prop">reporters</span>: [<span class="str">'jestronaut'</span>],
+};</pre>
+    </div>
+
+    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:0.5rem;">3. Run via the CLI (suppresses raw Jest output)</p>
+    <div class="code-block">
+      <div class="code-block-header"><span>terminal</span></div>
+      <pre>npx jestronaut</pre>
+    </div>
+
+    <p style="color:var(--muted);font-size:0.85rem;margin-top:1.5rem;">
+      Or add it as an npm script in <code>package.json</code>:
+    </p>
+    <div class="code-block">
+      <div class="code-block-header"><span>package.json</span></div>
+      <pre>{
+  <span class="prop">"scripts"</span>: {
+    <span class="prop">"test"</span>: <span class="str">"jestronaut"</span>
+  }
+}</pre>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Built by <a href="https://github.com/realdeepnandi" target="_blank">@realdeepnandi</a> &nbsp;·&nbsp;
+      <a href="https://github.com/realdeepnandi/jestronaut" target="_blank">GitHub</a> &nbsp;·&nbsp;
+      <a href="https://www.npmjs.com/package/jestronaut" target="_blank">npm</a> &nbsp;·&nbsp;
+      MIT License
+    </p>
+  </footer>
+
+</body>
+</html>
