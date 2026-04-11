@@ -78,16 +78,13 @@ global.__jestronaut_emit__ = realEmit;
 
 const _origEmit = process.stdin.emit;
 process.stdin.emit = function(event, ...args) {
-  if (event === 'data' && global.__jestronaut_block_jest_input__) return true;
+  if ((event === 'data' || event === 'keypress') && global.__jestronaut_block_jest_input__) return true;
   return _origEmit.apply(this, [event, ...args]);
 };
 
-// Global contract for watch mode:
-//   __jestronaut_ui__                    — { store, unmount } created once, reused across re-runs
-//   __jestronaut_block_jest_input__      — boolean; true when TUI holds input focus
-//   __jestronaut_jest_keypress__         — Jest's raw onKeypress listener (unwrapped)
-//   __jestronaut_emit__                  — original process.stdin.emit before any patching
+global.__jestronaut_update_config_and_run__ = null;
 
 // Forward all CLI args so flags like --testPathPattern, --watch etc. still work
 const { run } = await import('jest');
+
 run();
